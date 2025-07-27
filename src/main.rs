@@ -9,7 +9,7 @@ use clap::{Parser, Subcommand};
 use log::{error, info, warn};
 use secure_p2p_messenger::{
     crypto::{IdentityKeyPair, PrekeyManager, UserProfile},
-    utils::{MessengerConfig},
+    utils::{MessengerConfig, DEFAULT_CONFIG_FILE},
     App,
 };
 use std::path::PathBuf;
@@ -86,6 +86,12 @@ enum Commands {
     Network {
         #[command(subcommand)]
         action: NetworkCommands,
+    },
+    /// Quickstart: generate identity and config then run
+    Quickstart {
+        /// Optional display name for generated identity
+        #[arg(short, long)]
+        name: Option<String>,
     },
 }
 
@@ -203,6 +209,7 @@ async fn main() -> Result<()> {
             iterations,
         } => handle_benchmark_command(benchmark_type, iterations).await,
         Commands::Network { action } => handle_network_commands(action, &config).await,
+        Commands::Quickstart { name } => handle_quickstart_command(name, config).await,
     }
 }
 
@@ -474,6 +481,61 @@ async fn handle_network_commands(action: NetworkCommands, _config: &MessengerCon
         }
     }
     Ok(())
+}
+
+async fn handle_quickstart_command(name: Option<String>, config: MessengerConfig) -> Result<()> {
+    // Ensure required directories exist
+    config.ensure_directories()?;
+
+    // Load or create identity
+    let profile = {
+        let keys_dir = &config.storage.keys_dir;
+        let profile_path = keys_dir.join("profile.json");
+        let private_key_path = keys_dir.join("private_key");
+
+        if !profile_path.exists() || !private_key_path.exists() {
+            let display_name = name.unwrap_or_else(|| {
+                std::env::var("USER")
+                    .or_else(|_| std::env::var("USERNAME"))
+                    .unwrap_or_else(|_| "User".to_string())
+            });
+
+            info!("Generating new identity for '{}'", display_name);
+            let profile = UserProfile::new(display_name);
+
+            std::fs::create_dir_all(keys_dir)?;
+            std::fs::write(&profile_path, serde_json::to_string_pretty(&profile.identity)?)?;
+            std::fs::write(&private_key_path, profile.export_private_key())?;
+            profile
+        } else {
+            load_user_profile(&config)?
+        }
+    };
+
+    // Show profile information
+    println!("User Profile");
+    println!("============");
+    println!("Name: {}", profile.identity.display_name);
+    println!("ID: {}", profile.identity.id);
+    println!("Short ID: {}", profile.identity.short_id());
+    println!(
+        "Created: {}",
+        profile
+            .identity
+            .created_at
+            .format("%Y-%m-%d %H:%M:%S UTC")
+    );
+    println!("Public Key: {}", hex::encode(profile.identity.public_key));
+
+    // Generate default configuration if missing
+    let default_path = std::path::PathBuf::from(DEFAULT_CONFIG_FILE);
+    if !default_path.exists() {
+        config.save(&default_path)?;
+        println!("✓ Default configuration generated: {}", default_path.display());
+    }
+
+    // Run the messenger with defaults
+    handle_run_command(None, Vec::new(), false, config).await
 }
 
 fn load_or_create_user_profile(config: &MessengerConfig) -> Result<UserProfile> {

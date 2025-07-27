@@ -47,6 +47,9 @@ cargo build --release
 ### Basic Usage
 
 ```bash
+# Start quickly with defaults
+cargo run --bin messenger quickstart --name "Your Name"
+
 # Generate a new identity
 cargo run --bin messenger keys generate --name "Your Name"
 
