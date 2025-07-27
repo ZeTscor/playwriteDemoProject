@@ -365,8 +365,9 @@ mod tests {
     #[test]
     fn test_discovery_manager_bootstrap() {
         let mut config = MessengerConfig::default();
+        let peer_id = PeerId::random();
         config.network.bootstrap_nodes = vec![
-            "/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWGRjQ8Qm8Z5s5Q5s5Q5s5Q5s5Q5s5Q5s5Q5s5Q5s5Q5s5Q".to_string()
+            format!("/ip4/127.0.0.1/tcp/4001/p2p/{}", peer_id)
         ];
         
         let manager = DiscoveryManager::new(config);
