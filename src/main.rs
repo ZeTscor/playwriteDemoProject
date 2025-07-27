@@ -15,6 +15,7 @@ use secure_p2p_messenger::{
 use std::path::PathBuf;
 use tokio::signal;
 use base64::{engine::general_purpose, Engine};
+use uuid::Uuid;
 
 /// Secure P2P Messenger - End-to-end encrypted peer-to-peer messaging
 #[derive(Parser)]
@@ -92,6 +93,13 @@ enum Commands {
         /// Optional display name for generated identity
         #[arg(short, long)]
         name: Option<String>,
+    },
+    /// Send a text message to a peer
+    Send {
+        /// Recipient user ID (UUID)
+        peer: String,
+        /// Message text
+        message: String,
     },
 }
 
@@ -210,6 +218,9 @@ async fn main() -> Result<()> {
         } => handle_benchmark_command(benchmark_type, iterations).await,
         Commands::Network { action } => handle_network_commands(action, &config).await,
         Commands::Quickstart { name } => handle_quickstart_command(name, config).await,
+        Commands::Send { peer, message } => {
+            handle_send_command(peer, message, config).await
+        }
     }
 }
 
@@ -460,16 +471,32 @@ async fn handle_benchmark_command(benchmark_type: String, iterations: usize) -> 
     Ok(())
 }
 
-async fn handle_network_commands(action: NetworkCommands, _config: &MessengerConfig) -> Result<()> {
+async fn handle_network_commands(action: NetworkCommands, config: &MessengerConfig) -> Result<()> {
     match action {
         NetworkCommands::Test { node: _ } => {
             println!("Testing network connectivity...");
             // In a full implementation, you'd test actual network connectivity
             println!("✓ Network tests completed");
         }
-        NetworkCommands::Discover { timeout: _ } => {
+        NetworkCommands::Discover { timeout } => {
             println!("Discovering peers...");
-            // In a full implementation, you'd run peer discovery
+            use secure_p2p_messenger::network::DiscoveryManager;
+            let mut manager = DiscoveryManager::new(config.clone());
+            let results = manager.perform_discovery().await?;
+
+            for res in &results {
+                println!("Found peer: {} at {:?}", res.peer_id, res.addresses);
+            }
+
+            if results.is_empty() {
+                println!("No peers found");
+            }
+
+            // Wait for additional discovery rounds if timeout > 0
+            if timeout > 0 {
+                tokio::time::sleep(std::time::Duration::from_secs(timeout)).await;
+            }
+
             println!("✓ Peer discovery completed");
         }
         NetworkCommands::Stats => {
@@ -536,6 +563,17 @@ async fn handle_quickstart_command(name: Option<String>, config: MessengerConfig
 
     // Run the messenger with defaults
     handle_run_command(None, Vec::new(), false, config).await
+}
+
+async fn handle_send_command(peer: String, message: String, config: MessengerConfig) -> Result<()> {
+    let recipient_id = Uuid::parse_str(&peer)?;
+
+    let mut app = App::new(config).await?;
+    let message_id = app.send_message(recipient_id, &message).await?;
+    println!("✓ Message {} sent to {}", message_id, peer);
+
+    app.shutdown().await?;
+    Ok(())
 }
 
 fn load_or_create_user_profile(config: &MessengerConfig) -> Result<UserProfile> {
