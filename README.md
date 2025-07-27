@@ -47,6 +47,9 @@ cargo build --release
 ### Basic Usage
 
 ```bash
+# Start quickly with defaults
+cargo run --bin messenger quickstart --name "Your Name"
+
 # Generate a new identity
 cargo run --bin messenger keys generate --name "Your Name"
 
@@ -119,6 +122,9 @@ messenger network discover --timeout 30
 
 # Show network statistics
 messenger network stats
+
+# Send a text message to a peer
+messenger send <PEER_ID> "Hello there"
 ```
 
 ### Running the Messenger

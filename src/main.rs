@@ -9,12 +9,13 @@ use clap::{Parser, Subcommand};
 use log::{error, info, warn};
 use secure_p2p_messenger::{
     crypto::{IdentityKeyPair, PrekeyManager, UserProfile},
-    utils::{MessengerConfig},
+    utils::{MessengerConfig, DEFAULT_CONFIG_FILE},
     App,
 };
 use std::path::PathBuf;
 use tokio::signal;
 use base64::{engine::general_purpose, Engine};
+use uuid::Uuid;
 
 /// Secure P2P Messenger - End-to-end encrypted peer-to-peer messaging
 #[derive(Parser)]
@@ -86,6 +87,19 @@ enum Commands {
     Network {
         #[command(subcommand)]
         action: NetworkCommands,
+    },
+    /// Quickstart: generate identity and config then run
+    Quickstart {
+        /// Optional display name for generated identity
+        #[arg(short, long)]
+        name: Option<String>,
+    },
+    /// Send a text message to a peer
+    Send {
+        /// Recipient user ID (UUID)
+        peer: String,
+        /// Message text
+        message: String,
     },
 }
 
@@ -203,6 +217,10 @@ async fn main() -> Result<()> {
             iterations,
         } => handle_benchmark_command(benchmark_type, iterations).await,
         Commands::Network { action } => handle_network_commands(action, &config).await,
+        Commands::Quickstart { name } => handle_quickstart_command(name, config).await,
+        Commands::Send { peer, message } => {
+            handle_send_command(peer, message, config).await
+        }
     }
 }
 
@@ -453,16 +471,32 @@ async fn handle_benchmark_command(benchmark_type: String, iterations: usize) -> 
     Ok(())
 }
 
-async fn handle_network_commands(action: NetworkCommands, _config: &MessengerConfig) -> Result<()> {
+async fn handle_network_commands(action: NetworkCommands, config: &MessengerConfig) -> Result<()> {
     match action {
         NetworkCommands::Test { node: _ } => {
             println!("Testing network connectivity...");
             // In a full implementation, you'd test actual network connectivity
             println!("✓ Network tests completed");
         }
-        NetworkCommands::Discover { timeout: _ } => {
+        NetworkCommands::Discover { timeout } => {
             println!("Discovering peers...");
-            // In a full implementation, you'd run peer discovery
+            use secure_p2p_messenger::network::DiscoveryManager;
+            let mut manager = DiscoveryManager::new(config.clone());
+            let results = manager.perform_discovery().await?;
+
+            for res in &results {
+                println!("Found peer: {} at {:?}", res.peer_id, res.addresses);
+            }
+
+            if results.is_empty() {
+                println!("No peers found");
+            }
+
+            // Wait for additional discovery rounds if timeout > 0
+            if timeout > 0 {
+                tokio::time::sleep(std::time::Duration::from_secs(timeout)).await;
+            }
+
             println!("✓ Peer discovery completed");
         }
         NetworkCommands::Stats => {
@@ -473,6 +507,72 @@ async fn handle_network_commands(action: NetworkCommands, _config: &MessengerCon
             println!("Messages received: 0");
         }
     }
+    Ok(())
+}
+
+async fn handle_quickstart_command(name: Option<String>, config: MessengerConfig) -> Result<()> {
+    // Ensure required directories exist
+    config.ensure_directories()?;
+
+    // Load or create identity
+    let profile = {
+        let keys_dir = &config.storage.keys_dir;
+        let profile_path = keys_dir.join("profile.json");
+        let private_key_path = keys_dir.join("private_key");
+
+        if !profile_path.exists() || !private_key_path.exists() {
+            let display_name = name.unwrap_or_else(|| {
+                std::env::var("USER")
+                    .or_else(|_| std::env::var("USERNAME"))
+                    .unwrap_or_else(|_| "User".to_string())
+            });
+
+            info!("Generating new identity for '{}'", display_name);
+            let profile = UserProfile::new(display_name);
+
+            std::fs::create_dir_all(keys_dir)?;
+            std::fs::write(&profile_path, serde_json::to_string_pretty(&profile.identity)?)?;
+            std::fs::write(&private_key_path, profile.export_private_key())?;
+            profile
+        } else {
+            load_user_profile(&config)?
+        }
+    };
+
+    // Show profile information
+    println!("User Profile");
+    println!("============");
+    println!("Name: {}", profile.identity.display_name);
+    println!("ID: {}", profile.identity.id);
+    println!("Short ID: {}", profile.identity.short_id());
+    println!(
+        "Created: {}",
+        profile
+            .identity
+            .created_at
+            .format("%Y-%m-%d %H:%M:%S UTC")
+    );
+    println!("Public Key: {}", hex::encode(profile.identity.public_key));
+
+    // Generate default configuration if missing
+    let default_path = std::path::PathBuf::from(DEFAULT_CONFIG_FILE);
+    if !default_path.exists() {
+        config.save(&default_path)?;
+        println!("✓ Default configuration generated: {}", default_path.display());
+    }
+
+    // Run the messenger with defaults
+    handle_run_command(None, Vec::new(), false, config).await
+}
+
+async fn handle_send_command(peer: String, message: String, config: MessengerConfig) -> Result<()> {
+    let recipient_id = Uuid::parse_str(&peer)?;
+
+    let mut app = App::new(config).await?;
+    let message_id = app.send_message(recipient_id, &message).await?;
+    println!("✓ Message {} sent to {}", message_id, peer);
+
+    app.shutdown().await?;
     Ok(())
 }
 
