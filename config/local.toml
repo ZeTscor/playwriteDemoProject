@@ -1,0 +1,49 @@
+# Local Development Configuration
+# Override settings for local development and testing
+
+[network]
+# Use a different port for development
+listen_port = 4002
+
+# Enable all discovery mechanisms for testing
+enable_mdns = true
+enable_dht = true
+enable_upnp = false  # Disable UPnP in development
+enable_relay = false # Disable relay in development
+
+# Shorter timeouts for faster development iteration
+connection_timeout = 10
+message_timeout = 10
+
+[crypto]
+# Faster key rotation for testing
+key_rotation_interval = 300  # 5 minutes
+
+# Fewer prekeys for development
+prekey_count = 10
+
+[storage]
+# Use local directory for development
+data_dir = "./dev-data"
+keys_dir = "./dev-data/keys"
+messages_dir = "./dev-data/messages"
+sessions_dir = "./dev-data/sessions"
+
+# Enable compression
+enable_compression = true
+
+# More frequent backups in development
+backup_interval = 60  # 1 minute
+
+[logging]
+# More verbose logging for development
+level = "debug"
+
+# Log to console in development
+enable_file_logging = false
+
+[performance]
+# Smaller buffers for development
+network_buffer_size = 8192
+max_message_queue_size = 1000
+batch_size = 10

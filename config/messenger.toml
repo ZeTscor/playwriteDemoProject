@@ -1,0 +1,114 @@
+# Secure P2P Messenger Configuration
+# This is the main configuration file for the messenger application
+
+[network]
+# Port to listen on for P2P connections
+listen_port = 4001
+
+# External address for NAT traversal (optional)
+# external_address = "192.168.1.100:4001"
+
+# Bootstrap nodes for initial peer discovery
+bootstrap_nodes = [
+    # Add bootstrap node addresses here
+    # "/ip4/104.131.131.82/tcp/4001/p2p/QmaCpDMGvV2BGHeYERUEnRQAwe3N8SzbUtfsmvsqQLuvuJ"
+]
+
+# Maximum number of concurrent connections
+max_connections = 50
+
+# Connection timeout in seconds
+connection_timeout = 30
+
+# Message timeout in seconds
+message_timeout = 30
+
+# Enable mDNS discovery for local network
+enable_mdns = true
+
+# Enable DHT for peer discovery
+enable_dht = true
+
+# Enable UPnP for NAT traversal
+enable_upnp = true
+
+# Enable relay nodes for NAT traversal
+enable_relay = true
+
+# Custom relay addresses
+relay_addresses = [
+    # Add relay node addresses here
+]
+
+[crypto]
+# Key rotation interval in seconds (24 hours)
+key_rotation_interval = 86400
+
+# Number of one-time prekeys to maintain
+prekey_count = 100
+
+# Maximum age for signed prekeys in seconds (30 days)
+signed_prekey_max_age = 2592000
+
+# Enable perfect forward secrecy
+enable_pfs = true
+
+# Message key cache size
+message_key_cache_size = 1000
+
+[storage]
+# Base directory for data storage
+data_dir = "~/.secure-p2p-messenger"
+
+# Directory for storing keys
+keys_dir = "~/.secure-p2p-messenger/keys"
+
+# Directory for message storage
+messages_dir = "~/.secure-p2p-messenger/messages"
+
+# Directory for session storage
+sessions_dir = "~/.secure-p2p-messenger/sessions"
+
+# Maximum storage size in bytes (0 = unlimited)
+max_storage_size = 0
+
+# Enable compression for stored data
+enable_compression = true
+
+# Backup interval in seconds (1 hour)
+backup_interval = 3600
+
+[logging]
+# Log level (error, warn, info, debug, trace)
+level = "info"
+
+# Enable file logging
+enable_file_logging = true
+
+# Log file path (optional, defaults to data_dir/logs/messenger.log)
+# log_file = "~/.secure-p2p-messenger/logs/messenger.log"
+
+# Maximum log file size in bytes (10MB)
+max_log_size = 10485760
+
+# Number of log files to keep
+log_rotation_count = 5
+
+# Enable structured JSON logging
+json_format = false
+
+[performance]
+# Number of worker threads for async runtime (optional)
+# worker_threads = 4
+
+# Buffer size for network operations (64KB)
+network_buffer_size = 65536
+
+# Maximum message queue size
+max_message_queue_size = 10000
+
+# Enable optimizations for low-latency mode
+low_latency_mode = false
+
+# Batch size for database operations
+batch_size = 100

@@ -1,0 +1,73 @@
+# Production Configuration
+# Optimized settings for production deployment
+
+[network]
+# Standard production port
+listen_port = 4001
+
+# Longer timeouts for production stability
+connection_timeout = 60
+message_timeout = 120
+
+# Maximum connections for production
+max_connections = 100
+
+# Enable all NAT traversal mechanisms
+enable_upnp = true
+enable_relay = true
+
+# Production bootstrap nodes
+bootstrap_nodes = [
+    # Add your production bootstrap nodes here
+]
+
+[crypto]
+# Standard key rotation (24 hours)
+key_rotation_interval = 86400
+
+# Full prekey count for production
+prekey_count = 100
+
+# Production-grade settings
+enable_pfs = true
+message_key_cache_size = 5000
+
+[storage]
+# Production data directory
+data_dir = "/var/lib/secure-p2p-messenger"
+keys_dir = "/var/lib/secure-p2p-messenger/keys"
+messages_dir = "/var/lib/secure-p2p-messenger/messages"
+sessions_dir = "/var/lib/secure-p2p-messenger/sessions"
+
+# Enable compression for storage efficiency
+enable_compression = true
+
+# Daily backups
+backup_interval = 86400
+
+# Limit storage to 10GB
+max_storage_size = 10737418240
+
+[logging]
+# Production logging level
+level = "info"
+
+# Enable file logging for production
+enable_file_logging = true
+log_file = "/var/log/secure-p2p-messenger/messenger.log"
+
+# Larger log files for production
+max_log_size = 104857600  # 100MB
+log_rotation_count = 10
+
+# Use JSON format for production log analysis
+json_format = true
+
+[performance]
+# Optimize for production workload
+network_buffer_size = 131072  # 128KB
+max_message_queue_size = 50000
+batch_size = 500
+
+# Enable low-latency optimizations
+low_latency_mode = true
